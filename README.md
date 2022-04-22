@@ -1,2 +1,3 @@
-# Rokedeck
-pokedeck in ruby on rails
+# README
+
+Pokedeck with Rails
