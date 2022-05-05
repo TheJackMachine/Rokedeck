@@ -2,141 +2,180 @@ require 'pokemon_tcg_sdk'
 
 class DeckGenerator
 
-    @@valid_types = []
-    @@type_max_range = 16
-    @@type_min_range = 12
-    @@energy_number = 10
-    @@deck_size = 60
+  @@valid_types = []
+  @@type_max_range = 16
+  @@type_min_range = 12
+  @@energy_number = 10
+  @@deck_size = 60
 
-    def self.create(type)
-        self.init_valid_types
-        self.validate_type(type)
-        self.generate_deck(type)
+  def self.create(type = nil)
+    self.init_valid_types
+    type = self.check_type(type)
+    cards = self.generate_deck(type)
+    # save cards in database
+    uid_list = self.save_cards(cards)
+  end
+
+  #------------------------
+  # Protected
+  #------------------------
+
+  #protected
+
+  def self.check_type(type)
+    return self.random_type if type.nil?
+  end
+
+  #
+  # Generate a deck
+  #
+  def self.generate_deck(type)
+
+    self.validate_type(type)
+    # 1 - Add 12 - 16 pokemon card of specific type
+    cards = self.add_pokemon_cards(type, self.number_of_pokemon_cards)
+    puts "add pokemon card done"
+
+    # 2 - Add 10 energy cards
+    # cards = cards.concat(cards)
+    cards.concat(self.add_energy_cards(type, self.remainder_cards_number(cards)))
+    # puts "add pokemon card done"
+
+    # 3 - Add training card
+    cards.concat(self.add_trainer_cards(self.remainder_cards_number(cards)))
+    puts "add Energy card done"
+    return cards
+  end
+
+  #
+  # Add 12 - 16 pokemon card of specific type
+  #
+  def self.add_pokemon_cards(type, number)
+    pokemon_cards = self.fetch_pokemon_type(type)
+    puts "end of fetch"
+    puts type + "end of fetch" + number.to_s
+
+    cards = []
+
+    (0...number).each { |_|
+      cards << pokemon_cards[rand(0...pokemon_cards.length)]
+    }
+    return cards
+  end
+
+  #
+  # Add 10 energy cards
+  #
+  def self.add_energy_cards(type, number)
+    energy_cards = self.fetch_energy_type(type)
+    cards = []
+    puts ' Adding some Energy Cards ' + number.to_s
+    (0...number).each { |_|
+      cards << self.random_card(energy_cards)
+    }
+    return cards
+  end
+
+  #
+  # Add training card
+  #
+  def self.add_trainer_cards(number)
+    trainer_cards = self.fetch_training_card
+    cards = []
+    occurrences = {}
+
+    (0...number).each { |_|
+      selected_card = self.random_card(trainer_cards)
+
+      if !occurrences.key?(selected_card.name)
+        occurrences[selected_card.name] = 1
+      else
+        occurrences[selected_card.name] += 1
+      end
+
+      cards << selected_card
+    }
+
+    return cards
+  end
+
+  def self.number_of_pokemon_cards
+    return rand(@@type_min_range..@@type_max_range)
+  end
+
+  # init types with pokemon API
+  def self.init_valid_types
+    @@valid_types = Pokemon::Type.all if @@valid_types.empty?
+  end
+
+  # validate the type
+  def self.validate_type(type)
+    if !@@valid_types.include? type
+      raise "Wrong type"
     end
+  end
 
+  #------------------------
+  # Fetching
+  #------------------------
 
-    def self.generate_deck(type)
+  # get pokemon by type
+  def self.fetch_pokemon_type(type)
+    puts "Start get Pokemon type " + type
+    return Pokemon::Card.where(q: 'supertype:Pokémon types:' + type)
+  end
 
-        self.validate_type(type)
-        # 1 - Add 12 - 16 pokemon card of specific type
-        cards = self.add_pokemon_cards(type, self.number_of_pokemon_cards)
+  # get Energy card by type via API
+  def self.fetch_energy_type(type)
+    puts "Start get Energy " + type
+    return Pokemon::Card.where(q: 'supertype:Energy name:' + type)
+  end
 
-        # 2 - Add 10 energy cards
-        cards = cards.concat(cards)
+  # get Trainer card via API
+  def self.fetch_training_card
+    puts "Start get Trainer"
+    return Pokemon::Card.where(q: 'supertype:Trainer')
+  end
 
-        # 3 - Add training card
-        cards.concat(self.add_trainerCards(self.get_remainder_cards_number(cards)))
+  #------------------------
+  # Database
+  #------------------------
 
-    end
+  def self.save_cards(cards = [])
+    #Check existing saved cards
+    saved_cards = Card.pluck(:id)
+    #Save card if not exist
+    uid_list = []
+    cards.each { |card|
+      uid_list << card.id
 
-
-    protected
-    
-    #
-    # Add 12 - 16 pokemon card of specific type
-    #
-    def self.add_pokemon_cards(type, number)
-        pokemon_cards = self.fetch_pokemon_type(type)
-        cards = []
-        for n in 0...number
-            cards << pokemon_cards[rand(0...pokemon_cards.length)]
-        end
-        return cards
-    end
-
-    #
-    # Add 10 energy cards
-    #
-    def self.add_energy_cards(type, number)
-        energy_cards = self.fetch_energy_type(type)
-        cards = []
-        for n in 0...number
-            cards << self.add_energy_cards(type, @@energy_number)
-        end
-    end
-
-    #
-    # Add training card 
-    #
-
-    def self.add_trainerCards(number)
-        trainer_cards = self.fetch_training_card
-        cards = []
-        occurences = []
-        for n in 0...number
-
-            selected_card = self.random_card(trainer_cards)
-
-            if !occurences.key?(selected_card.name)
-                occurences[selected_card.name] = 1
-            else
-                occurences[selected_card.name] += 1
-            end
-            
-            cards << selected_card
-
-        end
-
-        return cards
-    end
-
-    # 
-    def self.number_of_pokemon_cards
-        rand(@@type_max_range..@@type_min_range)
-    end
-
-    # return a type
-    def self.check_type(type)
-        @@valid_types = @@valid_types[rand(0...@@valid_types.length)] if type.empty? 
-    end
-
-    # init types with pokemon API
-    def self.init_valid_types
-        @@valid_types = Pokemon::Type.all if @@valid_types.empty?
-    end
-
-    # validate the type
-    def self.validate_type(type)
-        if !@@valid_types.include? type 
-            raise "Wrong type"
-        end 
-    end
-
-    #------------------------
-    # Helper
-    #------------------------
-    def random_card(cards)
-        return cards[rand(0...@@valid_types.length)]
-    end
-
-    # Return number of cards to complete the deck
-    def get_remainder_cards_number(cards)
-        return self.deck_size - cards.length
-    end
-
-    #------------------------
-    # Fetching
-    #------------------------
-
-    # get pokemon by type
-    def self.fetch_pokemon_type(type)
-        return Pokemon::Card.where(
-            supertype: 'Pokémon',
-            types: type
+      unless saved_cards.include? card.id
+        Card.create(
+          uid: card.id,
+          name: card.name,
+          supertype: card.supertype,
+          types: card.types.empty? ? [] : card.types,
         )
-    end
+      end
 
-    # get Energy card by type via API
-    def self.fetch_energy_type(type)
-        return Pokemon::Card.where(
-            supertype: 'Energy',
-            name: type
-        )
-    end
+    }
+    return uid_list
+  end
 
-    # get Trainer card via API
-    def self.fetch_training_card
-        return Pokemon::Card.where(supertype: 'Trainer')
-    end
+  #------------------------
+  # Helper
+  #------------------------
+  def self.random_card(cards)
+    return cards[rand(0...@@valid_types.length)]
+  end
+
+  # Return number of cards to complete the deck
+  def self.remainder_cards_number(cards)
+    return @@deck_size - cards.length
+  end
+
+  def self.random_type
+    @@valid_types[rand(0...@@valid_types.length)]
+  end
 
 end
