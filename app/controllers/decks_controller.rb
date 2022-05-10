@@ -10,7 +10,6 @@ class DecksController < ApplicationController
         #deck2 = DeckGenerator.fetch_energy_type('Fire')
         #deck3 = DeckGenerator.fetch_training_card
 
-
         deck = DeckGenerator.create
 
         render :json => 'ok'

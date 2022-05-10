@@ -1,4 +1,5 @@
 require 'pokemon_tcg_sdk'
+require 'json'
 
 class DeckGenerator
 
@@ -110,7 +111,7 @@ class DeckGenerator
 
   # validate the type
   def self.validate_type(type)
-    if !@@valid_types.include? type
+    unless @@valid_types.include? type
       raise "Wrong type"
     end
   end
@@ -143,23 +144,20 @@ class DeckGenerator
 
   def self.save_cards(cards = [])
     #Check existing saved cards
-    saved_cards = Card.pluck(:id)
+    saved_cards = Card.pluck(:uid)
     #Save card if not exist
     uid_list = []
     cards.each { |card|
-      uid_list << card.id
 
-      unless saved_cards.include? card.id
-        Card.create(
-          uid: card.id,
-          name: card.name,
-          supertype: card.supertype,
-          types: card.types.empty? ? [] : card.types,
-        )
+      unless (saved_cards.include? card.id) || (uid_list.include? card.id)
+        Card.create( uid: card.id, name: card.name, supertype: card.supertype, types: [] )
       end
 
+      uid_list << card.id
     }
+
     return uid_list
+
   end
 
   #------------------------
