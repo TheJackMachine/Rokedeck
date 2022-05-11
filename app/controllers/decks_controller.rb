@@ -2,7 +2,6 @@ require 'pokemon_tcg_sdk'
 
 class DecksController < ApplicationController
 
-
     def index
         # puts Pokemon::Card.find('xy7-57')
         
@@ -11,11 +10,11 @@ class DecksController < ApplicationController
         #deck3 = DeckGenerator.fetch_training_card
 
         deck = DeckGenerator.create
+        puts deck.inspect
 
         render :json => 'ok'
         # render :json => Pokemon::Card.find('xy7-57')
 
     end
-
 
 end

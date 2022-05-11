@@ -1,4 +1,5 @@
 require 'pokemon_tcg_sdk'
+require 'securerandom'
 require 'json'
 
 class DeckGenerator
@@ -13,8 +14,28 @@ class DeckGenerator
     self.init_valid_types
     type = self.check_type(type)
     cards = self.generate_deck(type)
+
     # save cards in database
     uid_list = self.save_cards(cards)
+    puts 'uid_list'
+    puts uid_list.count
+
+    cards_to_associate = []
+    uid_list.each { |carduid|
+      cards_to_associate << Card::where(uid: carduid)
+    }
+
+    puts 'association'
+    puts cards_to_associate.inspect
+    puts cards_to_associate.count
+
+    #save deck
+    deck = Deck.create(uuid: SecureRandom.uuid, focus: type)
+    #association
+    deck.cards << cards_to_associate
+
+    return Deck.where(uuid: deck.uuid).includes(:cards).first
+
   end
 
   #------------------------
@@ -35,15 +56,21 @@ class DeckGenerator
     self.validate_type(type)
     # 1 - Add 12 - 16 pokemon card of specific type
     cards = self.add_pokemon_cards(type, self.number_of_pokemon_cards)
+    puts cards.count
     puts "add pokemon card done"
 
     # 2 - Add 10 energy cards
-    # cards = cards.concat(cards)
-    cards.concat(self.add_energy_cards(type, self.remainder_cards_number(cards)))
-    # puts "add pokemon card done"
+    energy_cards = self.add_energy_cards(type, @@energy_number)
+    puts energy_cards.count
+    cards = cards.concat(energy_cards)
+    puts cards.count
+    puts "add pokemon card done"
 
     # 3 - Add training card
-    cards.concat(self.add_trainer_cards(self.remainder_cards_number(cards)))
+    trainer_cards = self.add_trainer_cards(self.remainder_cards_number(cards))
+    cards = cards.concat(trainer_cards)
+    puts trainer_cards.count
+    puts cards.count
     puts "add Energy card done"
     return cards
   end
@@ -150,7 +177,7 @@ class DeckGenerator
     cards.each { |card|
 
       unless (saved_cards.include? card.id) || (uid_list.include? card.id)
-        Card.create( uid: card.id, name: card.name, supertype: card.supertype, types: [] )
+        Card.create(uid: card.id, name: card.name, supertype: card.supertype, types: [])
       end
 
       uid_list << card.id
