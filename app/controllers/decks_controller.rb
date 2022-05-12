@@ -1,20 +1,20 @@
-require 'pokemon_tcg_sdk'
-
 class DecksController < ApplicationController
 
     def index
-        # puts Pokemon::Card.find('xy7-57')
-        
-        #deck = DeckGenerator.fetch_pokemon_type('Fire')
-        #deck2 = DeckGenerator.fetch_energy_type('Fire')
-        #deck3 = DeckGenerator.fetch_training_card
+        @decks = Deck.all
+    end
 
-        deck = DeckGenerator.create
-        puts deck.inspect
+    def show
+        @deck =  Deck.includes(:cards).where(uuid: params[:uuid]).first
+    end
 
-        render :json => 'ok'
-        # render :json => Pokemon::Card.find('xy7-57')
-
+    def generate
+        if params[:type]
+            puts "parameter " + params[:type]
+            @deck = DeckGenerator.create(params[:type])
+        else
+            @deck = DeckGenerator.create
+        end
     end
 
 end
