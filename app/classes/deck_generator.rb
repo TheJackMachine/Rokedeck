@@ -46,6 +46,7 @@ class DeckGenerator
 
   def self.check_type(type)
     return self.random_type if type.nil?
+    return type
   end
 
   #
